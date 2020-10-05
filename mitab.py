@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""Script:: mitab.
+
+Synopsis:
+    Script that extracts FlyBase physical/molecular interaction data from an 
+    input database instance and writes in PSI MITAB format for export to 
+    Alliance.
+
+Author:
+    Julie Agapite jagapite@morgan.harvard.edu
+
+"""
 import psycopg2
 import argparse
 import csv
@@ -6,6 +17,7 @@ import re
 
 
 def connect(sql, query, conn):
+    """Query database and return results of query."""
     cursor = conn.cursor() # Return the cursor and use it to perform queries.
 
     # Execute the query.
@@ -20,7 +32,7 @@ def connect(sql, query, conn):
 
 
 def get_pubmed(pub_query,conn):
-    # Returns pubmed id for the input FBrf
+    """"Return pubmed id for the input FBrf."""
 
     get_pm = ('SELECT DISTINCT dx.accession '
                         'FROM pub p, pub_dbxref pd, dbxref dx, db '
@@ -36,7 +48,7 @@ def get_pubmed(pub_query,conn):
 
 
 def get_CG_id(gid, conn):
-    # Returns CG ID for input FBgn
+    """Return CG ID for input FBgn."""
 
     get_CG = ('SELECT DISTINCT dx.accession '
                 'FROM feature f, feature_dbxref fd, db, dbxref dx '
@@ -48,7 +60,7 @@ def get_CG_id(gid, conn):
 
 
 def get_Entrez_id(gid,conn):
-    # Returns Entrez ID for input FBgn
+    """Return Entrez ID for input FBgn."""
 
     get_Entrez = ('SELECT DISTINCT dx.accession '
                     'FROM feature f, feature_dbxref fd, db, dbxref dx '
@@ -64,7 +76,7 @@ def get_Entrez_id(gid,conn):
 
 
 def get_taxid(xid,conn):
-    # Returns NCBI taxid, genus, species for input feature ID
+    """Return NCBI taxid, genus, species for input feature ID."""
 
     taxid = ('SELECT DISTINCT dx.accession, o.genus, o.species '
             'FROM feature x, organism o, organism_dbxref od, dbxref dx, db '
@@ -79,7 +91,7 @@ def get_taxid(xid,conn):
 
 
 def get_role(xint,conn):
-    # Returns participant role for input interaction and participant
+    """Return participant role for input interaction and participant."""
 
     role = ('SELECT DISTINCT dx.accession, cvt.name, cvt.cvterm_id '
                     'FROM interaction i, feature_interaction fi, feature f, cvterm cvt, dbxref dx '
@@ -91,7 +103,7 @@ def get_role(xint,conn):
 
 
 def get_subregions(xint,conn): 
-    # Returns subregions associated with input interaction and participant
+    """Return subregions associated with input interaction and participant."""
 
     subregions = ('SELECT DISTINCT cvt.name, fip.value, f.name '
                     'FROM interaction i, feature_interaction fi, feature_interactionprop fip, ' 
@@ -108,7 +120,7 @@ def get_subregions(xint,conn):
 
 
 def get_isoforms(xint,conn):
-    # Returns isoform associated with an interaction and participant
+    """Return isoform associated with an interaction and participant."""
 
     isoforms = ('SELECT DISTINCT f.name '
                     'FROM interaction i, feature_interaction fi, feature_interactionprop fip, ' 
@@ -125,7 +137,7 @@ def get_isoforms(xint,conn):
 
 
 def get_tag_info(xint,conn): 
-    # Returns tag/experimental feature/notes field associated with an interaction and participant
+    """Return tag/experimental feature/notes field associated with an interaction and participant."""
 
     get_tags = ('SELECT DISTINCT fip2.value '
             'FROM interaction i, feature_interaction fi, feature_interactionprop fip, '
@@ -140,7 +152,7 @@ def get_tag_info(xint,conn):
 
 
 def get_child_ids(id,conn):
-    # Returns list of all child terms of input cvterm id
+    """Return list of all child terms of input cvterm id."""
 
     child_ids = ('WITH RECURSIVE children AS '
                     '(SELECT subject_id '
@@ -159,7 +171,7 @@ def get_child_ids(id,conn):
 
 
 def  get_comments(qint,conn):
-    # Get all other comments except source and internal notes
+    """Get all other comments except source and internal notes."""
 
     comms = ('SELECT DISTINCT ip.value '
                     'FROM interaction i, interactionprop ip, cvterm cvt '
@@ -171,7 +183,7 @@ def  get_comments(qint,conn):
 
 
 def whittle(xlist,extra_terms):
-    # Removes extra terms from input list
+    """Remove extra assay terms from input list."""
     for term in xlist:
         if term[1] in extra_terms:
             xlist.remove(term)   
@@ -179,7 +191,7 @@ def whittle(xlist,extra_terms):
 
 
 def query_for_ints(filename, conn): 
-    # Main function- gets all interactions and info
+    """Main function to get all interactions and info."""
 
     # Query db and return a list of all interactions in form of tuples. [(int, FBig), (int, FBig), etc.]
     get_ints = ('SELECT DISTINCT i.uniquename, ig.uniquename '
@@ -703,6 +715,8 @@ def query_for_ints(filename, conn):
 
 
 def main():
+    """Set up argument parser and database connection."""
+
     parser = argparse.ArgumentParser(description='Query Chado.')
     parser.add_argument('-s', '--pgserver', help='Postgres server', required=True)
     parser.add_argument('-d', '--database', help='Reporting database', required=True)

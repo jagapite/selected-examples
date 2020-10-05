@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-# Execute the script with the appropriate arguments for server, database, username, password.
-# For example: 'python3 genetic_mitab.py -s flysql20 -d fb_2020_01_reporting -u hpotter -p hedwig'
-# Database used must be a reporting build.
+"""Script:: genetic_mitab.
+
+Synopsis:
+    Script that extracts FlyBase genetic interaction data from a reporting build 
+    and writes in PSI MITAB format for export to Alliance.
+
+Author:
+    Julie Agapite jagapite@morgan.harvard.edu
+
+"""
 
 import psycopg2
 import argparse
@@ -9,52 +16,43 @@ import csv
 import re
 import logging
 
+# Set up the parser to handle cmd line arguments
+parser = argparse.ArgumentParser(description='Query Chado.')
+parser.add_argument('-s', '--pgserver', help='Postgres server', required=True)
+parser.add_argument('-d', '--database', help='Reporting database', required=True)
+parser.add_argument('-u', '--username', help='Postgres User name', required=True)
+parser.add_argument('-p', '--password', help='Postgres password', required=True)
+args = parser.parse_args()
+server = args.pgserver
+database = args.database
+username = args.username
+password = args.password
 
-def main():    # noqa C901
-    # Set up function that deals with user passed arguments and sets up database connection and logging.
+# Script must be run on a reporting db.
+if not re.search('reporting$', database):
+    raise argparse.ArgumentTypeError('Use of reporting database expected.')
 
-    global filename
-    global logfile
-    global log
+# Generate filenames based on database used.
+filename = "genetic_interactions_mitab_%s.tsv" % (database)
+logfile = "genetic_interactions_mitab_%s.log" % (database)
 
-    #  Set up the parser to handle cmd line arguments
-    parser = argparse.ArgumentParser(description='Query Chado.')
-    parser.add_argument('-s', '--pgserver', help='Postgres server', required=True)
-    parser.add_argument('-d', '--database', help='Reporting database', required=True)
-    parser.add_argument('-u', '--username', help='Postgres User name', required=True)
-    parser.add_argument('-p', '--password', help='Postgres password', required=True)
-    args = parser.parse_args()
-    server = args.pgserver
-    database = args.database
-    username = args.username
-    password = args.password
+# Set up logger.
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+file_handler = logging.FileHandler(logfile, mode='a')
+formatter = logging.Formatter('%(asctime)s : %(levelname)s : Line No %(lineno)d : %(message)s')
+file_handler.setFormatter(formatter)
+log.addHandler(file_handler)
 
-    # Script must be run on a reporting db.
-    if not re.search('reporting$', database):
-        raise argparse.ArgumentTypeError('Use of reporting database expected.')
+# Set up connection to db and query for genetic interactions.
+conn_string = "host='%s' dbname='%s' user='%s' password='%s'" % (server, database, username, password)
+conn = psycopg2.connect(conn_string)
+main()
+log.info('Genetic Interactions file is complete.')
+conn.close()
 
-    # Generate filenames based on database used.
-    filename = "genetic_interactions_mitab_%s.tsv" % (database)
-    logfile = "genetic_interactions_mitab_%s.log" % (database)
-
-    # Set up logger.
-    log = logging.getLogger(__name__)
-    log.setLevel(logging.INFO)
-    file_handler = logging.FileHandler(logfile, mode='a')
-    formatter = logging.Formatter('%(asctime)s : %(levelname)s : Line No %(lineno)d : %(message)s')
-    file_handler.setFormatter(formatter)
-    log.addHandler(file_handler)
-
-    # Set up connection to db and query for genetic interactions.
-    conn_string = "host='%s' dbname='%s' user='%s' password='%s'" % (server, database, username, password)
-    conn = psycopg2.connect(conn_string)
-    query_for_ints(conn)
-    log.info('Genetic Interactions file is complete.')
-    conn.close()
-
-
-def query_for_ints(conn):    # noqa C901
-    # Main function that gets all genetic interactions and pertinent info.
+def main():
+    """Main function that gets all genetic interactions and pertinent info."""
 
     log.info('Starting query for interactions')
 
@@ -274,6 +272,7 @@ def query_for_ints(conn):    # noqa C901
 
 
 def connect(sql, query, conn):
+    """Query database and return results of query."""
     cursor = conn.cursor()
     if query == 'no_query':
         cursor.execute(sql)
@@ -304,7 +303,7 @@ def print_column_headers():
 
 
 def get_pubmed(pub_query, conn):
-    # Returns pubmed id for the input FBrf.
+    """Return pubmed id for the input FBrf."""
     get_pm = ('SELECT DISTINCT dx.accession '
               'FROM pub p, pub_dbxref pd, dbxref dx, db '
               'WHERE p.pub_id = pd.pub_id '
@@ -319,7 +318,7 @@ def get_pubmed(pub_query, conn):
 
 
 def get_CG_id(gid, conn):
-    # Returns CG ID for input FBgn.
+    """Return CG ID for input FBgn."""
     get_CG = ('SELECT DISTINCT dx.accession '
               'FROM feature f, feature_dbxref fd, db, dbxref dx '
               'WHERE f.feature_id = fd.feature_id AND fd.dbxref_id = dx.dbxref_id '
@@ -331,7 +330,7 @@ def get_CG_id(gid, conn):
 
 
 def get_Entrez_id(gid, conn):
-    # Returns Entrez ID for input FBgn.
+    """Return Entrez ID for input FBgn."""
     get_Entrez = ('SELECT DISTINCT dx.accession '
                   'FROM feature f, feature_dbxref fd, db, dbxref dx '
                   'WHERE f.feature_id = fd.feature_id AND fd.dbxref_id = dx.dbxref_id '
@@ -346,7 +345,7 @@ def get_Entrez_id(gid, conn):
 
 
 def get_taxid(gid, conn):
-    # Returns NCBI taxid, genus, species for input feature ID.
+    """Return NCBI taxid, genus, species for input feature ID."""
     taxid = ('SELECT DISTINCT dx.accession, o.genus, o.species '
              'FROM feature g, organism o, organism_dbxref od, dbxref dx, db '
              'WHERE g.organism_id = o.organism_id AND o.organism_id = od.organism_id '
