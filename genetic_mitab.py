@@ -47,9 +47,7 @@ log.addHandler(file_handler)
 # Set up connection to db and query for genetic interactions.
 conn_string = "host='%s' dbname='%s' user='%s' password='%s'" % (server, database, username, password)
 conn = psycopg2.connect(conn_string)
-main()
-log.info('Genetic Interactions file is complete.')
-conn.close()
+
 
 def main():
     """Main function that gets all genetic interactions and pertinent info."""
@@ -264,6 +262,8 @@ def main():
                                      '-', '-', '-', '-', '-', '-', 'false', '-', '-', '-',
                                      '-', '-', '-'])
 
+    conn.close()
+    log.info('Genetic Interactions file is complete.')
     log.info("Number of interactions skipped: %s", skipped)
     log.info("Number of genes with no alt ids: %s", len(no_alt_id))
     log.info("Total number of FBrfs with no pmid: %s", len(no_pmid))
